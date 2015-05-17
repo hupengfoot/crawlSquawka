@@ -61,7 +61,7 @@ def downloadpage(url):
 
 #read page from local file
 def readDownloadPage():
-    f = open('./squawka2', 'r')
+    f = open('./squawka', 'r')
     content = f.read();
     f.close();
     return creatSoup(content)
@@ -137,15 +137,28 @@ def creatMatchInfo(soup, matchID):
     sql = "insert into tbMatchInfo(iMatchID, tStart, iHomeTeamID, iAwayTeamID, iHomeScore, iAwayScore) values('{}', '{}', '{}', '{}', '{}', '{}')".format(matchID, kickoff, score['homeTeamID'], score['awayTeamID'], score['homeScore'], score['awayScore'])
     mydbpool.myInsert(sql)
 
-def getSwapPlayers(soup):
+def getSwapPlayers(soup, matchID):
     swapPlayers = []
     swapEvents = soup.find_all('swap_players') 
     for oneSwap in swapEvents:
         swap = {}
-        swap['team_id'] = oneSwap['team_id']
-        swap['min'] = oneSwap['min']
+        swap['mins'] = oneSwap['min']
+        swap['minsec'] = oneSwap['minsec']
+        swap['secs'] = 0
+        try:
+            if oneSwap['injurytime_play'] == None:
+                swap['injurytime_play'] = 0
+            else:
+                swap['injurytime_play'] = oneSwap['injurytime_play']
+        except:
+            swap['injurytime_play'] = 0
         swap['sub_to_player'] = oneSwap.sub_to_player['player_id']
         swap['player_to_sub'] = oneSwap.player_to_sub['player_id']
+        swap['type'] = 1
+        swap['team_id'] = oneSwap['team_id']
+        sql = "insert into tbMatchEvent(iMatchID, iMins, iMinsec, iSecs, iInjurytime_play, iPlayer1ID, iPlayer2ID, iType, iTeamID, szEventContent) values('{}', '{}', '{}', '{}', '{}', '{}', '{}', '{}', '{}', '{}')".format(matchID, swap['mins'], swap['minsec'], swap['secs'], swap['injurytime_play'], swap['sub_to_player'], swap['player_to_sub'], swap['type'], swap['team_id'], '')
+        print sql
+        mydbpool.myInsert(sql)
         swapPlayers.append(swap)
     return swapPlayers
     
@@ -197,8 +210,8 @@ def parseXMl(soup, matchID):
     teams = creatTeams(soup)
     players = creatPlayers(soup)
     creatMatchInfo(soup, matchID)
-    #swapPlayers = getSwapPlayers(soup)
-    #cards = getCards(soup)
+    swapPlayers = getSwapPlayers(soup, matchID)
+    cards = getCards(soup)
     #goals = getGoals(soup)
     #corners = getCorners(soup)
     #penalties = getPenalties(soup)
